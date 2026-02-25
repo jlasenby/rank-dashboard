@@ -212,8 +212,10 @@ def get_ranks_at_lookback(
         return {}
 
     if isinstance(current_date, str):
-        from datetime import datetime as _dt
-        current_date = _dt.fromisoformat(current_date).date()
+        current_date = date.fromisoformat(current_date)
+
+    if n_days < 1:
+        raise ValueError(f"n_days must be a positive integer, got {n_days!r}")
 
     target_date_str = (current_date - timedelta(days=n_days)).isoformat()
 
