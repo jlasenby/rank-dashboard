@@ -262,9 +262,9 @@ def render_ranked_table(
     format_dict = {}
     for col in roc_display_cols:
         if col in display_df.columns:
-            format_dict[col] = "{:.1f}"
+            format_dict[col] = "{:.1f}%"
     if vol_display_col in display_df.columns:
-        format_dict[vol_display_col] = "{:.1f}"
+        format_dict[vol_display_col] = "{:.1f}%"
     if format_dict:
         styler = styler.format(format_dict, na_rep="--")
 
