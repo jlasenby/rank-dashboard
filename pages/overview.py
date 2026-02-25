@@ -72,7 +72,8 @@ def _render_summary_styled(title: str, df: pd.DataFrame) -> None:
     if fmt:
         styler = styler.format(fmt, na_rep="--")
 
-    st.dataframe(styler, use_container_width=True, hide_index=True)
+    height = min(len(df) * 35 + 38, 800)
+    st.dataframe(styler, use_container_width=True, hide_index=True, height=height)
 
 
 # ---------------------------------------------------------------------------
@@ -151,8 +152,6 @@ def _render_macro_table(category: str, cat_df: pd.DataFrame) -> None:
 # Page render
 # ===================================================================
 
-st.header("Overview")
-
 rankings: dict | None = st.session_state.get("rankings")
 macro_df: pd.DataFrame | None = st.session_state.get("macro_data")
 data_status: dict[str, Any] | None = st.session_state.get("data_status")
@@ -165,7 +164,6 @@ if rankings is None:
 # Section A: Top Ranked Assets (2x2 grid)
 # -----------------------------------------------------------------------
 
-st.markdown("---")
 st.subheader("Top Ranked Assets")
 
 row1_col1, row1_col2 = st.columns(2)
@@ -218,12 +216,12 @@ with row2_col1:
 
 # 4. Alpha Grid Top 10
 with row2_col2:
-    df_alpha = _build_alpha_grid_top(rankings, top_n=10)
+    df_alpha = _build_alpha_grid_top(rankings, top_n=20)
     if not df_alpha.empty:
-        df_alpha_summary = _summary_table(df_alpha, top_n=10)
-        _render_summary_styled("Alpha Grid Top 10", df_alpha_summary)
+        df_alpha_summary = _summary_table(df_alpha, top_n=20)
+        _render_summary_styled("Alpha Grid Top 20", df_alpha_summary)
     else:
-        st.subheader("Alpha Grid Top 10")
+        st.subheader("Alpha Grid Top 20")
         st.info("No Alpha Grid data available.")
 
 
