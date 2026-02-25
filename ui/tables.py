@@ -115,7 +115,6 @@ def _compute_historical_rank_col(
         Series of plain-text strings, one per row in df.
     """
     tickers = df["yf_symbol"].tolist()
-    col_name = "rank_1w" if n_days <= 10 else "rank_4w"
     hist_ranks = get_ranks_at_lookback(
         page_name, tickers, current_date=date.today(), n_days=n_days
     )
@@ -135,7 +134,7 @@ def _compute_historical_rank_col(
         else:
             values.append("\u2014")
 
-    return pd.Series(values, index=df.index, name=col_name)
+    return pd.Series(values, index=df.index)
 
 
 def _rank_chg_color(val: str) -> str:
