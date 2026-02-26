@@ -131,9 +131,9 @@ def _render_macro_table(category: str, cat_df: pd.DataFrame) -> None:
         return
 
     # Show Name + ROC columns, hide Ticker and Category
-    display_cols = ["Name"]
+    display_cols = ["Name", "Price"] if "Price" in cat_df.columns else ["Name"]
     roc_cols = []
-    for c in ["1D%", "5D%", "30D%", "90D%"]:
+    for c in ["1D%", "15D%", "30D%", "90D%"]:
         if c in cat_df.columns:
             display_cols.append(c)
             roc_cols.append(c)
@@ -144,6 +144,8 @@ def _render_macro_table(category: str, cat_df: pd.DataFrame) -> None:
     styler = style_roc_heatmap_applymap(styler, roc_cols)
 
     fmt = {c: "{:.2f}%" for c in roc_cols if c in display_df.columns}
+    if "Price" in display_df.columns:
+        fmt["Price"] = "{:.4f}"
     if fmt:
         styler = styler.format(fmt, na_rep="--")
 
