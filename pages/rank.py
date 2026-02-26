@@ -18,22 +18,6 @@ from engine.ticker_mapping import parse_watchlist_with_sections, TickerMapping
 from ui.tables import render_ranked_table
 
 
-# ---------------------------------------------------------------------------
-# Page header
-# ---------------------------------------------------------------------------
-
-st.header("Momentum Ranking Dashboard")
-st.markdown(
-    "Upload a TradingView watchlist file to rank tickers by volatility-adjusted "
-    "momentum. Adjust the ROC lookback period to analyse different time horizons."
-)
-
-# ---------------------------------------------------------------------------
-# 1. Import Section
-# ---------------------------------------------------------------------------
-
-st.subheader("1. Import Watchlist")
-
 uploaded_file = st.file_uploader(
     "Drop a TradingView watchlist file",
     type=["txt", "csv"],
@@ -65,8 +49,6 @@ st.success(f"Parsed **{len(mappings)}** tickers from **{uploaded_file.name}**")
 # 3. Lookback Period Slider
 # ---------------------------------------------------------------------------
 
-st.subheader("2. ROC Period (days)")
-
 lookback = st.slider(
     "ROC Lookback (days)",
     min_value=1,
@@ -78,8 +60,6 @@ lookback = st.slider(
 # ---------------------------------------------------------------------------
 # 4. Build ranked table
 # ---------------------------------------------------------------------------
-
-st.subheader("3. Ranked Table")
 
 # Check that session state has price data
 fetch_result = st.session_state.get("fetch_result")

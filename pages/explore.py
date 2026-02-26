@@ -16,8 +16,6 @@ from ui.tables import render_ranked_table
 # Page render
 # ===================================================================
 
-st.header("Explore")
-
 rankings: dict | None = st.session_state.get("rankings")
 
 if rankings is None:
