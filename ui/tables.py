@@ -14,7 +14,7 @@ import pandas as pd
 import streamlit as st
 
 from persistence.rank_store import get_previous_ranks, get_ranks_at_lookback
-from ui.styles import format_flag_badges, style_roc_heatmap_applymap, style_vol_heatmap
+from ui.styles import format_flag_badges, style_flag_highlight, style_roc_heatmap_applymap, style_vol_heatmap
 
 
 # ---------------------------------------------------------------------------
@@ -254,6 +254,11 @@ def render_ranked_table(
     # Volatility heat-map (orange gradient)
     if vol_display_col in display_df.columns:
         styler = style_vol_heatmap(styler, [vol_display_col])
+
+    # Flag highlight (purple background for BELOW_SMA cells)
+    flags_display_col = _DISPLAY_NAMES.get("flags", "Flag")
+    if flags_display_col in display_df.columns:
+        styler = style_flag_highlight(styler, flags_display_col)
 
     # Suppress the default pandas index in the display
     styler = styler.hide(axis="index")
