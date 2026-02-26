@@ -31,8 +31,8 @@ def _summary_table(
 ) -> pd.DataFrame:
     """Extract the top-N rows and format for display.
 
-    Returns a DataFrame with columns: Rank, Ticker, 30D Chg, 90D Chg,
-    250D Chg (and optionally Sector).
+    Returns a DataFrame with columns: Rank, Ticker, 1D Chg, 15D Chg,
+    30D Chg, 90D Chg, 250D Chg (and optionally Sector).
     """
     if ranked_df.empty:
         return pd.DataFrame()
