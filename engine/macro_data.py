@@ -141,7 +141,7 @@ def compute_macro_roc(price_data: dict[str, pd.DataFrame]) -> pd.DataFrame:
                     (as returned by fetch_macro_data).
 
     Returns:
-        DataFrame with columns: Category, Ticker, Name, 1D%, 5D%, 30D%, 90D%
+        DataFrame with columns: Category, Ticker, Name, Price, 1D%, 15D%, 30D%, 90D%
         Sorted by category then ticker.
     """
     rows: list[dict] = []

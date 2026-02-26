@@ -21,7 +21,7 @@ import config
 from engine.data_fetch import TickerMetadata
 from engine.scoring import ScoringResult, compute_scores_batch
 from engine.ticker_mapping import TickerMapping
-from engine.trend_filters import MarketRegime, apply_individual_filter, check_market_regime
+from engine.trend_filters import MarketRegime, check_market_regime
 
 
 @dataclass
