@@ -42,6 +42,8 @@ def _summary_table(
     cols: dict[str, str] = {"rank": "Rank", "tv_symbol": "Ticker"}
     if show_sector and "sector" in df.columns:
         cols["sector"] = "Sector"
+    cols["1D"] = "1D Chg"
+    cols["15D"] = "15D Chg"
     cols["30D"] = "30D Chg"
     cols["90D"] = "90D Chg"
     cols["250D"] = "250D Chg"
@@ -50,7 +52,7 @@ def _summary_table(
     out = df[available].rename(columns=cols)
 
     # Round numeric columns
-    for col in ["30D Chg", "90D Chg", "250D Chg"]:
+    for col in ["1D Chg", "15D Chg", "30D Chg", "90D Chg", "250D Chg"]:
         if col in out.columns:
             out[col] = pd.to_numeric(out[col], errors="coerce").round(1)
 
@@ -64,7 +66,7 @@ def _render_summary_styled(title: str, df: pd.DataFrame) -> None:
         st.info("No data available.")
         return
 
-    roc_cols = [c for c in ["30D Chg", "90D Chg", "250D Chg"] if c in df.columns]
+    roc_cols = [c for c in ["1D Chg", "15D Chg", "30D Chg", "90D Chg", "250D Chg"] if c in df.columns]
     styler = df.style.hide(axis="index")
     styler = style_roc_heatmap_applymap(styler, roc_cols)
 
