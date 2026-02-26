@@ -1,13 +1,13 @@
 """
-Ranking Pipeline — Score -> Filter -> Rank -> Flag.
+Ranking Pipeline — Score -> Rank -> Flag.
 
 Orchestrates the full ranking process:
   1. Compute ROC/ATR%/SMA scores for all tickers
   2. Check market regime (XIC vs 200-day SMA)
-  3. Apply individual 100-day SMA filter
-  4. Sort passing tickers by volatility-adjusted score
-  5. Assign ranks
-  6. Generate per-ticker flags (BELOW_SMA, NO_SCORE, LOW_VOL)
+  3. Sort ALL scorable tickers by volatility-adjusted score
+     (BELOW_SMA tickers are included with a flag, not excluded)
+  4. Assign ranks
+  5. Generate per-ticker flags (BELOW_SMA, NO_SCORE, LOW_VOL)
 """
 
 from __future__ import annotations
@@ -164,13 +164,10 @@ def build_ranking(
 
 
 def _exclusion_reason(scores: ScoringResult) -> str:
-    """Describe why a ticker was excluded."""
+    """Describe why a ticker was excluded (insufficient data to compute score)."""
     reasons = []
-    if scores.above_sma_100 is False:
-        reasons.append("Below 100-day SMA")
-    elif scores.above_sma_100 is None:
-        if not scores.has_sma_100:
-            reasons.append("Insufficient history for SMA")
+    if not scores.has_sma_100:
+        reasons.append("Insufficient history for SMA")
     if not scores.has_roc:
         reasons.append("Insufficient history for ROC")
     if not scores.has_atr:

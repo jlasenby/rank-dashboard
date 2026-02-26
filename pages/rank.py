@@ -123,8 +123,6 @@ for m in tickers_with_data:
     flags: list[str] = []
     if scores.above_sma_100 is False:
         flags.append("BELOW_SMA")
-    if scores.score is None:
-        flags.append("NO_SCORE")
     if (
         meta.average_volume is not None
         and meta.average_volume < config.MIN_VOLUME_WARNING
