@@ -56,13 +56,29 @@ if "rank_fetched_hashes" not in st.session_state:
 # 3. Lookback Period Slider
 # ---------------------------------------------------------------------------
 
-lookback = st.slider(
+# Initialise session state key on first load
+if "rank_lookback" not in st.session_state:
+    st.session_state.rank_lookback = 90
+
+# Preset buttons — one-shot setters for common lookback periods
+st.caption("Quick select:")
+_btn_cols = st.columns(4)
+_presets = [(0, "15D", 15), (1, "30D", 30), (2, "90D", 90), (3, "250D", 250)]
+for _col_idx, _label, _days in _presets:
+    if _btn_cols[_col_idx].button(_label, key=f"preset_{_days}"):
+        st.session_state.rank_lookback = _days
+
+# Free-form slider — reads/writes the same session state key
+st.slider(
     "ROC Lookback (days)",
     min_value=1,
     max_value=365,
-    value=90,
     step=1,
+    key="rank_lookback",
 )
+
+# Read final value for use in scoring below
+lookback: int = st.session_state.rank_lookback
 
 # ---------------------------------------------------------------------------
 # 4. Build ranked table
