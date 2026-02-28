@@ -8,11 +8,13 @@ are NOT tracked for this page.
 
 from __future__ import annotations
 
+import hashlib
+
 import pandas as pd
 import streamlit as st
 
 import config
-from engine.data_fetch import TickerMetadata
+from engine.data_fetch import fetch_metadata, fetch_price_data, TickerMetadata
 from engine.scoring import ScoringResult, compute_scores, compute_display_rocs
 from engine.ticker_mapping import parse_watchlist_with_sections, TickerMapping
 from ui.tables import render_ranked_table
@@ -45,6 +47,11 @@ if not mappings:
 
 st.success(f"Parsed **{len(mappings)}** tickers from **{uploaded_file.name}**")
 
+# Stable identifier for this file — used to skip re-fetch on slider moves
+_file_hash = hashlib.md5(uploaded_file.getvalue()).hexdigest()
+if "rank_fetched_hashes" not in st.session_state:
+    st.session_state.rank_fetched_hashes = set()
+
 # ---------------------------------------------------------------------------
 # 3. Lookback Period Slider
 # ---------------------------------------------------------------------------
@@ -74,25 +81,48 @@ if fetch_result is None or fetch_result.price_data is None:
 
 price_data: dict[str, pd.DataFrame] = fetch_result.price_data
 
-# Separate tickers into those with data and those without
-tickers_with_data: list[TickerMapping] = []
-tickers_missing: list[str] = []
+# Identify tickers whose price data is not yet in session state
+missing_mappings = [m for m in mappings if m.yf_symbol not in price_data]
 
-for m in mappings:
-    if m.yf_symbol in price_data:
-        tickers_with_data.append(m)
-    else:
-        tickers_missing.append(m.tv_symbol)
+# Auto-fetch missing tickers (once per file per session)
+if missing_mappings and _file_hash not in st.session_state.rank_fetched_hashes:
+    _n = len(missing_mappings)
+    _progress_bar = st.progress(0, text=f"Fetching price data for {_n} tickers…")
 
-if tickers_missing:
-    st.info(
-        f"**{len(tickers_missing)}** ticker(s) not in current price data "
-        f"(need to be fetched separately): {', '.join(tickers_missing[:20])}"
-        + ("..." if len(tickers_missing) > 20 else "")
-    )
+    def _rank_progress(current: int, total: int) -> None:
+        pct = current / total if total else 1.0
+        _progress_bar.progress(pct, text=f"Fetching price data… {current}/{total}")
+
+    with st.spinner(f"Fetching price data for {_n} tickers…"):
+        _new_prices = fetch_price_data(missing_mappings, progress_callback=_rank_progress)
+        _new_meta = fetch_metadata(missing_mappings)
+
+    # Merge into main session state so other pages and future re-runs benefit
+    fetch_result.price_data.update(_new_prices.price_data)
+    metadata_store.update(_new_meta)
+    st.session_state.metadata = metadata_store
+
+    # Mark this file as processed so slider moves don't re-trigger fetch
+    st.session_state.rank_fetched_hashes.add(_file_hash)
+
+    _progress_bar.empty()
+
+    # Non-blocking note for any symbols that genuinely failed
+    if _new_prices.failed_tickers:
+        st.caption(
+            f"{len(_new_prices.failed_tickers)} ticker(s) could not be fetched: "
+            + ", ".join(_new_prices.failed_tickers[:20])
+            + ("…" if len(_new_prices.failed_tickers) > 20 else "")
+        )
+
+# Build final list of scorable tickers (all mappings now checked against updated price_data)
+tickers_with_data = [m for m in mappings if m.yf_symbol in fetch_result.price_data]
 
 if not tickers_with_data:
-    st.warning("None of the uploaded tickers have price data available.")
+    st.warning(
+        "None of the uploaded tickers have price data available. "
+        "They may use unsupported exchange prefixes or be delisted."
+    )
     st.stop()
 
 # ---------------------------------------------------------------------------
