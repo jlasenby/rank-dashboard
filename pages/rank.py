@@ -86,18 +86,23 @@ missing_mappings = [m for m in mappings if m.yf_symbol not in price_data]
 
 # Auto-fetch missing tickers (once per file per session)
 if missing_mappings and _file_hash not in st.session_state.rank_fetched_hashes:
-    _n = len(missing_mappings)
-    _progress_bar = st.progress(0, text=f"Fetching price data for {_n} tickers…")
+    missing_count = len(missing_mappings)
+    _progress_bar = st.progress(0, text=f"Fetching price data for {missing_count} tickers…")
 
     def _rank_progress(current: int, total: int) -> None:
         pct = current / total if total else 1.0
         _progress_bar.progress(pct, text=f"Fetching price data… {current}/{total}")
 
-    with st.spinner(f"Fetching price data for {_n} tickers…"):
-        _new_prices = fetch_price_data(missing_mappings, progress_callback=_rank_progress)
-        _new_meta = fetch_metadata(missing_mappings)
+    try:
+        with st.spinner(f"Fetching price data for {missing_count} tickers…"):
+            _new_prices = fetch_price_data(missing_mappings, progress_callback=_rank_progress)
+            _new_meta = fetch_metadata(missing_mappings)
+    finally:
+        _progress_bar.empty()
 
     # Merge into main session state so other pages and future re-runs benefit
+    # Note: .update() mutates in-place, so the local `price_data` reference
+    # (assigned from fetch_result.price_data above) reflects this change too.
     fetch_result.price_data.update(_new_prices.price_data)
     metadata_store.update(_new_meta)
     st.session_state.metadata = metadata_store
@@ -105,14 +110,12 @@ if missing_mappings and _file_hash not in st.session_state.rank_fetched_hashes:
     # Mark this file as processed so slider moves don't re-trigger fetch
     st.session_state.rank_fetched_hashes.add(_file_hash)
 
-    _progress_bar.empty()
-
     # Non-blocking note for any symbols that genuinely failed
     if _new_prices.failed_tickers:
+        _failed_list = ", ".join(_new_prices.failed_tickers[:20])
+        _ellipsis = "…" if len(_new_prices.failed_tickers) > 20 else ""
         st.caption(
-            f"{len(_new_prices.failed_tickers)} ticker(s) could not be fetched: "
-            + ", ".join(_new_prices.failed_tickers[:20])
-            + ("…" if len(_new_prices.failed_tickers) > 20 else "")
+            f"{len(_new_prices.failed_tickers)} ticker(s) could not be fetched: {_failed_list}{_ellipsis}"
         )
 
 # Build final list of scorable tickers (all mappings now checked against updated price_data)
