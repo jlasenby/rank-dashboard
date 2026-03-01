@@ -64,7 +64,7 @@ for section in _SECTION_ORDER:
 
     render_ranked_table(
         df=section_df,
-        page_name=core_page_name,
+        page_name=f"{core_page_name}_{section}",
         show_rank_change=True,
         show_asset_class=False,
         show_sector=False,
