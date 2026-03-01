@@ -127,6 +127,7 @@ TSX:ZAG,TSX:XSB
 |-------------------|---------|
 | `TSX:` | Toronto Stock Exchange (`.TO` suffix) |
 | `TSXV:` | TSX Venture Exchange (`.V` suffix) |
+| `CSE:` | Canadian Securities Exchange (`.CN` suffix, yfinance) |
 | `NEO:` | NEO Exchange (yfinance fallback) |
 | `NASDAQ:`, `NYSE:`, `AMEX:` | US exchanges (no suffix) |
 | `CBOE:` | CBOE (ETFs like ARKK) |
