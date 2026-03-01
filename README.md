@@ -33,7 +33,7 @@ Where:
 - **ROC** — Rate of Change: percentage gain over the lookback period
 - **ATR%** — Average True Range as a percentage of price (volatility normalizer)
 
-A higher score means stronger momentum *relative to volatility* — it rewards securities that trend steadily upward over choppy ones. Rankings are computed across three watchlists (Core, Explore, USD) and persisted to SQLite daily so you can track rank changes over time.
+A higher score means stronger momentum *relative to volatility* — it rewards securities that trend steadily upward over choppy ones. Rankings are computed across **all watchlists** in the `Watchlists/` directory and persisted to SQLite daily so you can track rank changes over time.
 
 ---
 
@@ -132,13 +132,29 @@ TSX:ZAG,TSX:XSB
 | `CBOE:` | CBOE (ETFs like ARKK) |
 | `BINANCE:`, `COINBASE:` | Crypto (converted to `yfinance` format) |
 
-### Adding a New Watchlist
+### How Pages Find Their Watchlists
+
+Pages match watchlist files by **keyword in the filename** — not by exact name. This means you can rename files freely as long as the keyword is preserved:
+
+| Page | Keyword rule | Safe rename example |
+|------|-------------|-------------------|
+| **Core** | filename contains `CORE_MASTER` | `CORE_MASTER_v2.txt` ✅ |
+| **Explore** | filename starts with `EXPLORE` | `EXPLORE_CAD_2026.txt` ✅ |
+| **USD** | filename starts with `USD_LONGLIST` | `USD_LONGLIST_v2.txt` ✅ |
+| **Alpha Grid** | aggregates **all** `.txt` files in `Watchlists/` | any name ✅ |
+
+> **Note:** Any `.txt` file in `Watchlists/` — regardless of name — is loaded into the pipeline and contributes to the Alpha Grid and rank history. Files not matching a page keyword are ranked and persisted but only visible on the Alpha Grid and Overview.
+
+### Adding or Changing a Watchlist
 
 1. Export from TradingView: **Watchlist → ⋮ → Export watchlist**
-2. Rename the `.txt` file
+2. Rename the `.txt` file following the keyword rules above if it should appear on a dedicated page
 3. Optionally add `###SECTION_NAME` headers manually
 4. Drop the file into the `Watchlists/` directory
-5. Restart the dashboard — it picks up all `.txt` files automatically
+5. **Reload:** watchlists are scanned once per browser session at startup — use one of:
+   - **Force Refresh** on the Data Status page (⚙️) to reload within the current session
+   - Open a **new browser tab** to start a fresh session
+   - Restart the dashboard (`Ctrl+C` → `streamlit run app.py`)
 
 ---
 
@@ -164,7 +180,7 @@ On first launch the data pipeline runs automatically:
 4. **Metadata fetched** — sector, company name, market cap, avg volume
 5. **Macro data fetched** — FX, bonds, metals, energy, global indices
 6. **Rankings computed** — scored and ranked per watchlist, flagged
-7. **Snapshot saved** — today's ranks written to SQLite
+7. **Snapshots saved** — today's ranks written to SQLite for all watchlists and Core sections
 
 Subsequent page switches within the same session reuse cached session state — no re-fetching.
 
@@ -184,7 +200,8 @@ To force a full data refresh (e.g., during market hours for updated prices):
 **Top performers snapshot + Macro dashboard**
 
 - Four summary tables showing the **top 20 tickers** from each of: Core, Explore, USD, and Alpha Grid
-- Columns: Rank, Ticker, Company, Score, 1D Chg, 15D Chg, 30D Chg, 90D Chg, 250D Chg, Flag
+- Columns: Rank, Ticker, 1D Chg, 15D Chg, 30D Chg, 90D Chg, 250D Chg, Flag
+- ROC columns are heat-mapped green (positive) / red (negative)
 - Macro dashboard below: grouped by FX / Bonds / Metals / Energy / Indices
   - Shows current Price, 1D%, 15D%, 30D%, 90D% with green/red heat-map cells
 
@@ -192,54 +209,59 @@ To force a full data refresh (e.g., during market hours for updated prices):
 
 ### 🏆 Alpha Grid
 
-**Top 40% of all tickers across all watchlists**
+**Top 40% of all tickers across every watchlist in the folder**
 
-- Aggregates every ranked ticker from Core, Explore, and USD
+- Aggregates ranked tickers from **all** `.txt` files in `Watchlists/` — not just Core, Explore, and USD
 - Deduplicates by symbol (keeps the highest-scored occurrence)
-- Takes the top `40%` (ceiling) by score
-- Full ranked table with all ROC columns, flags, and rank history
+- Takes the top 40% (ceiling) by score
+- Full ranked table with all ROC columns, VOL, and flags
+- Rank change is **not tracked** for this page (tickers move between watchlists)
 
 ---
 
 ### 🎯 Core
 
-**Master watchlist — five asset class sections**
+**Master watchlist — asset class sections**
 
-- Displays each `###SECTION` from `CORE_MASTER_*.txt` as its own ranked sub-table
+- Displays each `###SECTION` from any `CORE_MASTER_*.txt` file as its own ranked sub-table
 - Typical sections: EQ_BETA, EQ_SECTORS, CRB, CRYPTO, FI
 - Each section is independently sorted by score with its own 1-based rank numbers
-- Rank history columns (1W ago, 4W ago) show movement arrows
+- **Rank history** (Chg, 1W, 4W) compares section-local ranks to section-local history — movement reflects position within the section, not the overall watchlist
 
 ---
 
 ### 🔍 Explore
 
-**~250 Canadian stocks**
+**CAD stocks**
 
-- Full ranked table of all tickers from `EXPLORE_*.txt`
-- Sector distribution bar chart below the table (top 20 ranked by sector)
+- Full ranked table of all tickers from any `EXPLORE_*.txt` file
+- Sector distribution bar chart (top 20 ranked tickers by sector)
 - Sector data sourced from yfinance metadata
+- Rank history columns: Chg (vs yesterday), 1W (vs ~7 days ago), 4W (vs ~28 days ago)
 
 ---
 
 ### 💵 USD
 
-**~250 USD-denominated ETFs**
+**USD-denominated ETFs**
 
-- Full ranked table of all tickers from `USD_LONGLIST_*.txt`
-- Same column set as Explore
+- Full ranked table of all tickers from any `USD_LONGLIST_*.txt` file
+- Same column set as Explore including rank history
 
 ---
 
 ### 📈 Rank (Dynamic Analyzer)
 
-**Drag-and-drop momentum analysis for any watchlist**
+**Upload any watchlist and rank it instantly**
 
 - Upload **any** TradingView watchlist file (`.txt` or `.csv`)
-- Adjust the **ROC Lookback slider** (1–365 days) — both ROC and ATR% use the same period
+- Price data for tickers not in the main pipeline is **fetched automatically** on upload — a progress bar shows fetch status
+- Once fetched, data is merged into session state so other pages can use it too
+- The same file re-uploaded within the same session skips re-fetching (file-hash dedup)
+- **Preset buttons** `15D | 30D | 90D | 250D` above the slider for one-click common periods
+- **ROC Lookback slider** (1–365 days, any value) — both ROC and ATR% use the same period
 - Table updates instantly as the slider moves
-- Useful for testing different momentum lookback windows or analyzing a watchlist not in the main pipeline
-- Rankings are **not persisted** (no SQLite write) for this page
+- Rankings are **not persisted** to SQLite for this page
 
 ---
 
@@ -252,7 +274,7 @@ To force a full data refresh (e.g., during market hours for updated prices):
 - Data source breakdown (Questrade vs yfinance per ticker)
 - Watchlist summary (tickers per file, how many have data)
 - Cache status (how many Parquet files, cache directory location)
-- **Force Refresh All Data** button
+- **Force Refresh All Data** button — clears all session state and re-runs the full pipeline
 
 ---
 
@@ -287,11 +309,11 @@ Multi-timeframe ROC values are pre-computed for every ranked ticker at fixed per
 | `BELOW_SMA` | Price < 100-day SMA | Purple cell background |
 | `LOW_VOL` | Avg daily volume < 50,000 | Shown in Flag column |
 
-> **Note:** BELOW_SMA tickers are **included** in rankings (not excluded). They receive a purple flag cell to indicate elevated risk of a downtrend but are ranked normally by score.
+> **Note:** BELOW_SMA tickers are **included** in rankings (not excluded). The purple highlight is a caution flag indicating elevated downtrend risk; tickers are still ranked normally by score.
 
 ### Market Regime
 
-The benchmark (XIC.TO) is checked against its 200-day SMA. If XIC is below its SMA, the market is in a **bearish regime** — this is displayed as a status indicator in the sidebar but does not change rankings.
+The benchmark (XIC.TO) is checked against its 200-day SMA. If XIC is below its SMA, the market is in a **bearish regime** — shown as a status indicator in the sidebar but does not affect rankings.
 
 ---
 
@@ -320,14 +342,14 @@ The benchmark (XIC.TO) is checked against its 200-day SMA. If XIC is below its S
 
 ## Rank History Persistence
 
-Rank snapshots are saved to `data/rank_history.db` (SQLite) once per calendar day.
+Rank snapshots are saved to `data/rank_history.db` (SQLite) once per calendar day per session start.
 
 **Schema:**
 
 ```sql
 CREATE TABLE rank_snapshots (
     snapshot_date  TEXT NOT NULL,   -- ISO date: '2026-02-25'
-    page           TEXT NOT NULL,   -- 'core', 'explore', 'usd'
+    page           TEXT NOT NULL,   -- e.g. 'EXPLORE_60221' or 'CORE_MASTER_60221_EQ_BETA'
     ticker         TEXT NOT NULL,   -- yf_symbol: 'RY.TO'
     tv_symbol      TEXT,
     asset_class    TEXT,
@@ -341,14 +363,26 @@ CREATE TABLE rank_snapshots (
 );
 ```
 
+**Page keys saved:**
+
+| Watchlist | Page key(s) saved |
+|-----------|------------------|
+| `EXPLORE_60221.txt` | `EXPLORE_60221` |
+| `USD_LONGLIST_60221.txt` | `USD_LONGLIST_60221` |
+| `CORE_MASTER_60221.txt` | `CORE_MASTER_60221` (global) + `CORE_MASTER_60221_EQ_BETA`, `CORE_MASTER_60221_EQ_SECTORS`, etc. (per section) |
+| Any other `.txt` file | `<filename stem>` |
+
 **Rank change columns in tables:**
 
-| Column | Query |
-|--------|-------|
-| 1W Rank | Closest snapshot ≤ 7 days ago |
-| 4W Rank | Closest snapshot ≤ 28 days ago |
+| Column | Meaning | Query |
+|--------|---------|-------|
+| **Chg** | vs yesterday | Most recent snapshot before today |
+| **1W** | vs ~1 week ago | Closest snapshot ≤ 7 calendar days ago |
+| **4W** | vs ~4 weeks ago | Closest snapshot ≤ 28 calendar days ago |
 
-Arrow color: 🟢 green = improved rank, 🔴 red = dropped rank, — = unchanged, `NEW` = no history
+Arrow color: 🟢 green = improved rank (lower number), 🔴 red = dropped rank, `—` = unchanged, `NEW` = no history that far back
+
+> **Note on `NEW`:** The 1W column requires 7+ days of snapshots to show data; 4W requires 28+. Both columns show `NEW` until enough history has accumulated. This is expected on a fresh install.
 
 ---
 
@@ -372,12 +406,12 @@ RANK/
 │
 ├── pages/
 │   ├── overview.py             # Top-20 summary tables + macro dashboard
-│   ├── alpha_grid.py           # Top 40% aggregated cross-watchlist
-│   ├── core.py                 # Per-section ranked tables
-│   ├── explore.py              # CAD stocks + sector chart
-│   ├── usd.py                  # USD ETFs
-│   ├── rank.py                 # Dynamic drag-and-drop analyzer
-│   └── data_status.py          # Pipeline health monitor
+│   ├── alpha_grid.py           # Top 40% aggregated across all watchlists
+│   ├── core.py                 # Per-section ranked tables (CORE_MASTER_*.txt)
+│   ├── explore.py              # CAD stocks + sector chart (EXPLORE_*.txt)
+│   ├── usd.py                  # USD ETFs (USD_LONGLIST_*.txt)
+│   ├── rank.py                 # Dynamic upload analyzer with auto-fetch
+│   └── data_status.py          # Pipeline health monitor + Force Refresh
 │
 ├── ui/
 │   ├── tables.py               # render_ranked_table() — shared table renderer
@@ -392,9 +426,10 @@ RANK/
 │   └── tv_export.py            # TradingView format utilities
 │
 ├── Watchlists/                 # Drop TradingView .txt exports here
-│   ├── CORE_MASTER_*.txt
-│   ├── EXPLORE_*.txt
-│   └── USD_LONGLIST_*.txt
+│   ├── CORE_MASTER_*.txt       # → Core page
+│   ├── EXPLORE_*.txt           # → Explore page
+│   ├── USD_LONGLIST_*.txt      # → USD page
+│   └── *.txt                   # → Alpha Grid only
 │
 ├── cache/                      # Auto-created; Parquet price cache (gitignored)
 ├── data/                       # Auto-created; rank_history.db (gitignored)
@@ -414,15 +449,22 @@ The data pipeline is still running. Wait for the sidebar status indicator to tur
 3. If yfinance tickers are failing, try a Force Refresh (rate limits sometimes cause transient failures)
 
 ### BELOW_SMA flag on many tickers
-This is expected during bearish market conditions. The benchmark (XIC.TO) status indicator in the sidebar tells you if the broad market is in a downtrend. BELOW_SMA tickers are still ranked — the purple highlight is a caution flag, not an exclusion.
+Expected during bearish market conditions. The benchmark (XIC.TO) status indicator in the sidebar shows if the broad market is in a downtrend. BELOW_SMA tickers remain ranked — the purple highlight is a caution flag, not an exclusion.
 
-### Rank page slider not updating scores
-The Rank page re-scores tickers on every slider move using cached price data. If no price data is loaded (e.g., first session load not complete), the page will show a warning. Navigate to another page first to let the pipeline complete.
+### 1W / 4W columns showing "NEW" for all tickers
+These columns need historical snapshots to compare against. `NEW` means no snapshot exists far enough back:
+- **1W** requires 7+ days of daily snapshots (appears ~1 week after first run)
+- **4W** requires 28+ days of daily snapshots (appears ~4 weeks after first run)
+- The `Chg` (yesterday) column works from day 2 onward
 
-### Watchlist file not appearing
-- Confirm the file is in the `Watchlists/` directory (check `config.WATCHLIST_DIR`)
-- Confirm the file has a `.txt` extension
-- Restart the dashboard (session state is cleared on restart)
+### Rank page — uploaded tickers not appearing / still showing NEW
+- Price data for tickers not in the main pipeline is fetched automatically on upload — wait for the progress bar to complete
+- If some tickers show "could not be fetched", they may use unsupported exchange prefixes or be delisted
+- `NEW` in the 1W/4W columns is expected for uploaded watchlists — the Rank page does not write to SQLite, so no history is ever saved for it
+
+### Watchlist file not appearing on its page
+- Confirm the filename contains the correct keyword (`CORE_MASTER`, `EXPLORE`, or `USD_LONGLIST`) — see [How Pages Find Their Watchlists](#how-pages-find-their-watchlists)
+- Watchlists are only scanned **once per session** at startup. To pick up a file added mid-session: use **Force Refresh** on Data Status, open a new browser tab, or restart the dashboard
 
 ### Cache is stale
 Click **Force Refresh All Data** on the Data Status page. This clears all cached session state and triggers a fresh API fetch on the next page load.
